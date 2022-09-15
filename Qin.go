@@ -1,7 +1,7 @@
 package main
 
 import (
-	"MicroOps/pkg/gateway"
+	"Qin/pkg/gateway"
 	"log"
 )
 

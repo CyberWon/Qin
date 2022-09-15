@@ -1,4 +1,4 @@
-module MicroOps
+module Qin
 
 go 1.16
 
