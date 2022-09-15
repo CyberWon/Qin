@@ -1,7 +1,7 @@
 package gateway
 
 import (
-	"MicroOps/pkg/req"
+	"Qin/pkg/req"
 	"github.com/go-ldap/ldap/v3"
 	"github.com/gomodule/redigo/redis"
 )

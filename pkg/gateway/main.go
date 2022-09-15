@@ -1,7 +1,7 @@
 package gateway
 
 import (
-	"MicroOps/pkg/req"
+	"Qin/pkg/req"
 	"crypto/tls"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
@@ -30,7 +30,7 @@ func init() {
 			log.Panic("读取文件失败")
 		} else {
 			if err := yaml.Unmarshal(data, &GS.Config); err != nil {
-				log.Panic("格式化配置文件失败")
+				log.Panic("格式化配置文件失败", err)
 			}
 		}
 	}

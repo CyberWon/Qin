@@ -1,7 +1,7 @@
 package gateway
 
 import (
-	"MicroOps/pkg/req"
+	"Qin/pkg/req"
 	"encoding/json"
 	"fmt"
 	"log"
