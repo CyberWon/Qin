@@ -18,6 +18,8 @@
 
 # 支持
 
+更新日志：[docs/changelog.md](docs/changelog.md)
+
 ## 认证方式
 - [x] Private Token
 - [x] Cookie

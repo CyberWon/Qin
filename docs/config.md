@@ -3,9 +3,10 @@
 在程序当前目录创建一个config.yml.目前是写死的。后期优化可以自定义。
 
 ```yaml
-proxy:
-  - app: jenkins #租户代码
+tenants:
+  - tenant: jenkins #租户代码
     url: https://jenkins.com #租户地址
+    insecure: true // 忽略https证书验证
     authorization: Basic # 租户认证方式
     authorization_url: # 获取租户token的地址
     autorization_domain: @qq.com # 租户的域，一般是在user后面加@xxxx.com

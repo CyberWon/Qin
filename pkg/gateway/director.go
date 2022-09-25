@@ -27,7 +27,7 @@ func (director CustomDirector) Basic(r *http.Request) {
 }
 
 func (director CustomDirector) PrivateToken(r *http.Request) {
-	user, app := r.Header.Get("Authorization-User"), r.Header.Get("Authorization-App")
+	user, app := r.Header.Get("Authorization-User"), r.Header.Get("Tenant")
 	if token, err := getAPPToken(user, app); err != nil {
 		log.Println("没有设置", user, app, "的private token，请先通过接口设置")
 	} else {
@@ -36,13 +36,13 @@ func (director CustomDirector) PrivateToken(r *http.Request) {
 }
 
 func (director CustomDirector) Token(r *http.Request) {
-	log.Println(r.Header.Get("Authorization"))
+	//log.Println(r.Header.Get("Authorization"))
 }
 
 // Archery 数据库审计平台
 func (director CustomDirector) Archery(r *http.Request) {
 
-	user, app, url := r.Header.Get("Authorization-User"), r.Header.Get("Authorization-App"), r.Header.Get("Authorization-URL")
+	user, app, url := r.Header.Get("Authorization-User"), r.Header.Get("Tenant"), r.Header.Get("Authorization-URL")
 	if token, err := getAPPToken(user, app); err != nil {
 		username, password := "", ""
 		if claims, err := vaildateToken(r.Header.Get("Authorization")); err != nil {
@@ -79,7 +79,7 @@ func (director CustomDirector) BKPaaS(r *http.Request) {
 
 // BK 蓝鲸cookie认证
 func (director CustomDirector) BK(r *http.Request) {
-	user, app, url, domain := r.Header.Get("Authorization-User"), r.Header.Get("Authorization-App"), r.Header.Get("Authorization-URL"), r.Header.Get("Authorization-Domain")
+	user, app, url, domain := r.Header.Get("Authorization-User"), r.Header.Get("Tenant"), r.Header.Get("Authorization-URL"), r.Header.Get("Authorization-Domain")
 	// todo: 这里会导致无法多节点部署。后续解决，做成分布式。
 	if _, ok := GS.CookieManager[user]; !ok {
 		GS.CookieManager[user] = map[string]req.HTTPCookie{}
@@ -93,7 +93,7 @@ func (director CustomDirector) BK(r *http.Request) {
 	validate := true
 	c.Url(r.URL.String()).Do()
 	// 登录失效会进行302跳转，如果没失效，Response.Request.Response的值为nil
-	if c.Response.Request.Response != nil {
+	if c.Response.Request != nil && c.Response.Request.Response != nil {
 		validate = false
 	}
 	if !validate {

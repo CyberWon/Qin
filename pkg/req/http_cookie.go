@@ -3,7 +3,6 @@ package req
 import (
 	"bytes"
 	"io"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 )
@@ -27,7 +26,6 @@ func (h *HTTPCookie) Get(data []byte) *HTTPCookie {
 func (h *HTTPCookie) Do() *HTTPCookie {
 	h.Response, _ = h.Client.Do(h.Request)
 	h.Cookies = h.CookiesJar.Cookies(h.Request.URL)
-	log.Println(h.Cookies)
 	return h
 }
 

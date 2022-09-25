@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
+	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	"io"
 	"log"
@@ -53,24 +54,26 @@ func init() {
 
 type Handle func(http.ResponseWriter, *http.Request)
 
-func (g *Gateway) loadApp() {
-	for _, config := range g.Config.Proxy {
-		log.Println("加载", config.App, "配置")
+func (g *Gateway) loadTenant() {
+	for _, config := range g.Config.Tenants {
+		log.Println("加载租户", config.Tenant)
 		// 新建反向代理服务
 		if rp, err := NewReverseGateway(config); err != nil {
 			log.Panic(err)
 		} else {
-			http.HandleFunc("/"+config.App+"/", g.middleware(rp.ServeHTTP))
+			http.HandleFunc("/"+config.Tenant+"/", g.middleware(rp.ServeHTTP))
 		}
 	}
 }
 
 func (g *Gateway) Start() error {
-
 	g.CookieManager = make(map[string]map[string]req.HTTPCookie)
 
-	// 加载第三方应用
-	g.loadApp()
+	// 初始化监控
+	g.initMonitor()
+
+	// 加载租户
+	g.loadTenant()
 
 	// 链接到数据源
 	g.ldapConn()
@@ -102,8 +105,7 @@ func RewriteURL(a, b *url.URL) (path, rawpath, uri string) {
 		s := singleJoiningSlash(a.Path, b.Path)
 		return s, s, s
 	}
-	// Same as singleJoiningSlash, but uses EscapedPath to determine
-	// whether a slash should be added
+
 	apath := a.EscapedPath()
 	bpath := b.EscapedPath()
 
@@ -111,11 +113,12 @@ func RewriteURL(a, b *url.URL) (path, rawpath, uri string) {
 	return p, p, p
 }
 
-func NewReverseGateway(proxy Proxy) (*httputil.ReverseProxy, error) {
+func NewReverseGateway(proxy Tenant) (*httputil.ReverseProxy, error) {
 	if target, err := url.Parse(proxy.URL); err != nil {
 		return nil, err
 	} else {
 		targetQuery := target.RawQuery
+
 		// 有一些反向代理的网站ssl证书会有问题，这里可以自定义是否检测
 		transport := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: proxy.Insecure},
@@ -134,7 +137,7 @@ func NewReverseGateway(proxy Proxy) (*httputil.ReverseProxy, error) {
 			}
 			log.Println(req.URL)
 			// 添加访问的app信息到header头部
-			req.Header.Set("Authorization-App", proxy.App)
+			req.Header.Set("Tenant", proxy.Tenant)
 			req.Header.Set("Authorization-URL", proxy.AuthorizationURL)
 			req.Header.Set("Authorization-Domain", proxy.AuthorizationDomain)
 			// 利用反射去调用自定义的Director,来修改对应的headers，认证信息等。
@@ -143,9 +146,11 @@ func NewReverseGateway(proxy Proxy) (*httputil.ReverseProxy, error) {
 			params := []reflect.Value{
 				reflect.ValueOf(req), // 方法参数
 			}
-			method.Call(params) // 返回的是字符串
-		}
+			method.Call(params)
 
+			// 每次调用执行+1
+			go TenantHTTPRequestCounter.With(prometheus.Labels{"tenant": proxy.Tenant}).Inc()
+		}
 		return &httputil.ReverseProxy{Director: director, Transport: transport, ModifyResponse: func(response *http.Response) error {
 
 			return nil

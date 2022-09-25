@@ -19,8 +19,8 @@ type LDAP struct {
 
 // Config 配置文件结构体
 type Config struct {
-	Proxy []Proxy
-	Ldap  struct {
+	Tenants []Tenant
+	Ldap    struct {
 		Host       string `yaml:"host"`
 		Port       int    `yaml:"port"`
 		BindDn     string `yaml:"bind_dn"`
@@ -40,8 +40,8 @@ type Config struct {
 		Auth string
 	}
 }
-type Proxy struct {
-	App                 string
+type Tenant struct {
+	Tenant              string
 	URL                 string
 	Authorization       string
 	AuthorizationURL    string `yaml:"authorization_url"`
