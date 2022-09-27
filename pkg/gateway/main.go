@@ -58,10 +58,10 @@ func (g *Gateway) loadTenant() {
 	for _, config := range g.Config.Tenants {
 		log.Println("加载租户", config.Tenant)
 		// 新建反向代理服务
-		if rp, err := NewReverseGateway(config); err != nil {
+		if tenantHandle, err := NewTenantHandle(config); err != nil {
 			log.Panic(err)
 		} else {
-			http.HandleFunc("/"+config.Tenant+"/", g.middleware(rp.ServeHTTP))
+			http.HandleFunc("/"+config.Tenant+"/", g.middleware(tenantHandle.ServeHTTP))
 		}
 	}
 }
@@ -77,6 +77,12 @@ func (g *Gateway) Start() error {
 
 	// 链接到数据源
 	g.ldapConn()
+
+	// 加载默认的资源
+	if defaultTenantUrl, err := url.Parse(g.Config.Default.Tenant); err == nil {
+		defaultTenantHandle := httputil.NewSingleHostReverseProxy(defaultTenantUrl)
+		http.HandleFunc("/", defaultTenantHandle.ServeHTTP)
+	}
 
 	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", GS.Config.Server.Port), nil)
 
@@ -113,7 +119,7 @@ func RewriteURL(a, b *url.URL) (path, rawpath, uri string) {
 	return p, p, p
 }
 
-func NewReverseGateway(proxy Tenant) (*httputil.ReverseProxy, error) {
+func NewTenantHandle(proxy Tenant) (*httputil.ReverseProxy, error) {
 	if target, err := url.Parse(proxy.URL); err != nil {
 		return nil, err
 	} else {

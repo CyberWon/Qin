@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"encoding/json"
 	"github.com/prometheus/client_golang/prometheus"
 	"net/http"
 )
@@ -22,8 +21,7 @@ func (g *Gateway) middleware(handle Handle) Handle {
 		// 验证用户是否登录
 		if token := r.Header.Get("Authorization"); token != "" {
 			if claims, err := vaildateToken(token); err != nil {
-				data, _ := json.Marshal(JsonResult{Code: 10004, Message: "token验证失败"})
-				w.Write(data)
+				HTTPApiResult(w, JsonResult{Code: 10004, Message: "token验证失败"})
 				UserRequestCounter.With(prometheus.Labels{"user": "guest"}).Inc()
 				return
 			} else {
@@ -32,8 +30,7 @@ func (g *Gateway) middleware(handle Handle) Handle {
 				UserRequestCounter.With(prometheus.Labels{"user": claims.Username}).Inc()
 			}
 		} else {
-			data, _ := json.Marshal(JsonResult{Code: 10008, Message: "没有携带token信息"})
-			w.Write(data)
+			HTTPApiResult(w, JsonResult{Code: 10008, Message: "没有携带token信息"})
 			UserRequestCounter.With(prometheus.Labels{"user": "guest"}).Inc()
 			return
 		}

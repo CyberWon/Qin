@@ -16,6 +16,9 @@
 
 秦（Qin）是一款集成身份认证、租户接入和应用防护的Web网关。
 
+![架构图](docs/images/architecture.png)
+需要调整架构图的可以访问：[ProcessOn](https://processon.com/view/61cbd4e7e401fd7a53882b4f)
+
 # 支持
 
 更新日志：[docs/changelog.md](docs/changelog.md)

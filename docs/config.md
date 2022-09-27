@@ -23,4 +23,6 @@ auth:
   expire: 72000 # token超时时间，秒
 redis:
   addr:  # redis地址，xxxx:port
+default:
+  tenant: #默认租户地址
 ```

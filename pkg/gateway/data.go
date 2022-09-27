@@ -39,6 +39,9 @@ type Config struct {
 		DB   int
 		Auth string
 	}
+	Default struct {
+		Tenant string
+	}
 }
 type Tenant struct {
 	Tenant              string
@@ -60,4 +63,10 @@ type TokenResult struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Token   string `json:"token"`
+}
+
+type UserResult struct {
+	Code    int        `json:"code"`
+	Message string     `json:"message"`
+	Data    UserStruct `json:"data"`
 }

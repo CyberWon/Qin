@@ -23,13 +23,29 @@ func (g *Gateway) ldapConn() {
 }
 
 func (g *Gateway) LdapAuth(user, password string) error {
+
+	if sr, err := g.LdapSeachUser(user); err == nil {
+		userDN := sr.DN
+		err = g.LDAP.Conn.Bind(userDN, password)
+		if err != nil {
+			log.Println("LDAP用户登录失败")
+			return err
+		}
+		return nil
+	} else {
+		return err
+	}
+
+}
+
+func (g *Gateway) LdapSeachUser(user string) (*ldap.Entry, error) {
 	filter := fmt.Sprintf("(&(objectClass=inetOrgPerson)(uid=%s))", user)
 	searchRequest := ldap.NewSearchRequest(
 		g.Config.Ldap.UserBaseDN,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		//fmt.Sprintf("(&(objectClass=organizationalUnit))"),
 		filter,
-		[]string{"cn"},
+		[]string{"cn", "mail", "name"},
 		nil,
 	)
 	// 避免因为长时间没有与LDAP Server通信，导致连接断开。
@@ -39,15 +55,7 @@ func (g *Gateway) LdapAuth(user, password string) error {
 	sr, err := g.LDAP.Conn.Search(searchRequest)
 	if err != nil {
 		log.Println("查询LDAP用户失败，")
-		return err
+		return nil, err
 	}
-
-	// 2. 进行二次bind，验证用户pass是否正确
-	userDN := sr.Entries[0].DN
-	err = g.LDAP.Conn.Bind(userDN, password)
-	if err != nil {
-		log.Println("LDAP用户登录失败")
-		return err
-	}
-	return nil
+	return sr.Entries[0], nil
 }
