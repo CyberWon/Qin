@@ -9,6 +9,7 @@ import (
 	"net/http/cookiejar"
 	url2 "net/url"
 	"strings"
+	"sync"
 )
 
 var (
@@ -16,6 +17,36 @@ var (
 )
 
 type CustomDirector struct {
+}
+
+func beforeRemoveHeader(r *http.Request) {
+	// 避免携带的信息被后端服务判断为非法请求
+	r.Header.Del("Cookie")
+	r.Header.Del("Origin")
+	r.Header.Del("Referer")
+	r.Header.Del("Sec-Fetch-Mode")
+	r.Header.Del("Sec-Fetch-Site")
+	r.Header.Del("Sec-Fetch-User")
+	r.Header.Del("Sec-fetch-dest")
+	r.Header.Del("Sec-Ch-Ua")
+	r.Header.Del("Sec-Ch-Ua-Mobile")
+	r.Header.Del("Sec-Ch-Ua-Platform")
+	r.Header.Del("X-Forwarded-For")
+	r.Header.Del("User-Agent")
+}
+
+func afterRemoveHeader(r *http.Request) {
+	// 反向代理删除header
+	r.Header.Del("Authorization-User")
+	r.Header.Del("Tenant")
+	r.Header.Del("Authorization-URL")
+	r.Header.Del("Authorization-Ext")
+	r.Header.Del("Authorization-Domain")
+}
+
+// None 无认证的情况下，直接去请求
+func (director CustomDirector) None(r *http.Request) {
+
 }
 
 func (director CustomDirector) Basic(r *http.Request) {
@@ -35,14 +66,22 @@ func (director CustomDirector) PrivateToken(r *http.Request) {
 	}
 }
 
-func (director CustomDirector) Token(r *http.Request) {
-	//log.Println(r.Header.Get("Authorization"))
+func (director CustomDirector) Rancher(r *http.Request) {
+	user, app := r.Header.Get("Authorization-User"), r.Header.Get("Tenant")
+	if token, err := getAPPToken(user, app); err != nil {
+		log.Println("没有设置", user, app, "的private token，请先通过接口设置")
+	} else {
+		r.Header.Set("Authorization", token)
+		r.AddCookie(&http.Cookie{Name: "R_SESS", Value: strings.Replace(token, "Bearer ", "", -1)})
+		log.Println(r.Cookie("R_SESS"))
+	}
 }
 
-// Archery 数据库审计平台
-func (director CustomDirector) Archery(r *http.Request) {
-
+// Token 基于token认证的方式
+func (director CustomDirector) Token(r *http.Request) {
 	user, app, url := r.Header.Get("Authorization-User"), r.Header.Get("Tenant"), r.Header.Get("Authorization-URL")
+	ext := strings.Split(r.Header.Get("Authorization-Ext"), " ")
+	usernameField, passwordField, tokenTypeField, tokenField := ext[0], ext[1], ext[2], ext[3]
 	if token, err := getAPPToken(user, app); err != nil {
 		username, password := "", ""
 		if claims, err := vaildateToken(r.Header.Get("Authorization")); err != nil {
@@ -50,16 +89,15 @@ func (director CustomDirector) Archery(r *http.Request) {
 		} else {
 			username = claims.Username
 			password = claims.Password
-			data, _ := json.Marshal(map[string]string{"username": username, "password": password})
+			data, _ := json.Marshal(map[string]string{usernameField: username, passwordField: password})
 			h := req.HTTP{}
 			if httpResult := h.Post(url, data); httpResult == nil {
 				log.Panic("获取token失败")
 			} else {
-				if accessToken := httpResult["access"].(string); accessToken != "" {
-					setAPPToken(username, app, "Bearer "+accessToken, 7200)
-					r.Header.Set("Authorization", "Bearer "+accessToken)
+				if accessToken := httpResult[tokenField].(string); accessToken != "" {
+					setAPPToken(username, app, tokenTypeField+" "+accessToken, 7200)
+					r.Header.Set("Authorization", tokenTypeField+" "+accessToken)
 				}
-
 			}
 		}
 	} else {
@@ -79,7 +117,7 @@ func (director CustomDirector) BKPaaS(r *http.Request) {
 
 // BK 蓝鲸cookie认证
 func (director CustomDirector) BK(r *http.Request) {
-	user, app, url, domain := r.Header.Get("Authorization-User"), r.Header.Get("Tenant"), r.Header.Get("Authorization-URL"), r.Header.Get("Authorization-Domain")
+	user, app, url, domain := r.Header.Get("Authorization-User"), "bk", r.Header.Get("Authorization-URL"), r.Header.Get("Authorization-Ext")
 	// todo: 这里会导致无法多节点部署。后续解决，做成分布式。
 	if _, ok := GS.CookieManager[user]; !ok {
 		GS.CookieManager[user] = map[string]req.HTTPCookie{}
@@ -92,11 +130,17 @@ func (director CustomDirector) BK(r *http.Request) {
 	// 判断是否认证通过
 	validate := true
 	c.Url(r.URL.String()).Do()
-	// 登录失效会进行302跳转，如果没失效，Response.Request.Response的值为nil
+	// 直接请求cmdb的接口并不会跳转，只会返回401错误，这里重新对去访问一下登录页面获取一下csrftoken
 	if c.Response.Request != nil && c.Response.Request.Response != nil {
+		log.Println(c.Response.Request.Response.StatusCode, c.Response.Request.Response.Status)
 		validate = false
+	} else if c.Response.StatusCode == 401 { // 登录失效会进行302跳转，如果没失效，Response.Request.Response的值为nil
+		validate = false
+		c.Url(url).Do()
 	}
 	if !validate {
+		var m sync.Mutex
+		m.Lock()
 		// 获取csrftoken
 		csrftoken := c.GetCookies("bklogin_csrftoken").Value
 		// 模拟登录
@@ -109,13 +153,18 @@ func (director CustomDirector) BK(r *http.Request) {
 				"username": []string{fmt.Sprintf("%s%s", user, domain)},
 				"password": []string{password}, "next": []string{""}, "app_id": []string{""}}
 			c.Url(url).Post(strings.NewReader(postData.Encode()), "urlencoded").Do()
+			log.Println("登录蓝鲸", c.Response.StatusCode, c.Response.Status)
 			c.Url(r.URL.String()).Do().SetCookie(r)
 		}
+		m.Unlock()
 	} else {
 		c.SetCookie(r)
 	}
 	// 蓝鲸SaaS会获取header里面的X-CSRFToken，不然无法POST，这个值在cookie里面
 	if ok := strings.Contains(r.URL.String(), "itsm"); ok {
-		r.Header.Set("X-CSRFToken", c.GetCookies("bkitsm_csrftoken").Value)
+		CSRFToken := c.GetCookies("bkitsm_csrftoken")
+		if CSRFToken != nil {
+			r.Header.Set("X-CSRFToken", CSRFToken.Value)
+		}
 	}
 }

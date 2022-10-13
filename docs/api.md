@@ -32,7 +32,7 @@ POST
 
 ## 请求地址
 
-/user/private_token
+/user/privateToken
 
 ## 请求方法
 POST
@@ -41,10 +41,10 @@ POST
 
 json
 
-|字段   | 类型  | 必填 | 说明   |
-| ------------ | ------------ | ------------ | ------------ |
-| app  | string  |  是 |  系统代码 |
-| token   |  string  | 是  | 认证方式+private token，获取方式请自行查阅对应系统帮助  |
+| 字段     | 类型  | 必填 | 说明                                 |
+|--------| ------------ | ------------ |------------------------------------|
+| tenant | string  |  是 | 租户代码                               |
+| token  |  string  | 是  | 认证方式+private token，获取方式请自行查阅对应系统帮助 |
 
 ### token说明
 由认证方式+private token组成。例如常见的Bearer，这里的token就设置成

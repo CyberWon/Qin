@@ -12,9 +12,20 @@
 
 例如rancher，gitlab这种。
 
-## Archery
+## Token
 
-sql审计平台自定义的认证方法。只适合sql审计
+有登录接口且能返回token的方式。需要在扩展字段里面指定。
+
+例如：A系统登录接口需要user和pass字段。就可以按照下面这样写。返回的token是叫access
+```
+authorization_ext: user pass jwt access 7200
+```
+- 第一位: 所在系统的用户名字段。常见的都是username，不排除有一些非得写成user
+- 第二位：所在系统的密码字段。常见的都是password，不排除有一些非得写成pass
+- 第三位：token类型，一般常见的有Bearer，jwt等
+- 第四位：登录成功后返回的token字段。这个各样的都有。
+- 第5位：token有效期
+
 
 ## BKPaaS
 

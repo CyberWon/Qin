@@ -9,7 +9,7 @@ tenants:
     insecure: true // 忽略https证书验证
     authorization: Basic # 租户认证方式
     authorization_url: # 获取租户token的地址
-    autorization_domain: @qq.com # 租户的域，一般是在user后面加@xxxx.com
+    authorization_ext: @qq.com # 传入director中的扩展参数。
 ldap:
   host: # ldap主机
   port:  # ldap端口，暂时不支持加密

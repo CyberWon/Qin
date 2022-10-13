@@ -24,17 +24,25 @@ func HTTPApiResult(w http.ResponseWriter, result interface{}) {
 	}
 }
 
+func JsonRequest(r *http.Request, v interface{}) error {
+	body, _ := ioutil.ReadAll(r.Body)
+	if err := json.Unmarshal(body, v); err != nil {
+		return err
+	} else {
+		return nil
+	}
+}
+
 // 通过LDAP认证
 func authLDAP(w http.ResponseWriter, r *http.Request) {
 
 	// 改成支持json
-	body, _ := ioutil.ReadAll(r.Body)
 	var Login struct {
 		Username string
 		Password string
 	}
 	code, msg, token := 0, "成功", ""
-	if err := json.Unmarshal(body, &Login); err != nil {
+	if err := JsonRequest(r, &Login); err != nil {
 		code, msg = 10007, "登录方式错误"
 	}
 
@@ -52,23 +60,29 @@ func authLDAP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		code, msg = 10002, "用户名或者密码不能为空"
 	}
+	setTokenCookie(w, token)
 	HTTPApiResult(w, TokenResult{Code: code, Message: msg, Token: token})
 }
 
-// setPrivateToken 设置私有token
+// setPrivateToken 设置私人token
 func setPrivateToken(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		return
-	}
 	code, msg := 0, "成功"
-	if app, token := r.FormValue("app"), r.FormValue("token"); app != "" && token != "" {
-		if err := setAPPToken(r.Header.Get("Authorization-User"), app, token, 0); err != nil {
+
+	var tenantPrivatetoken struct {
+		Tenant string
+		Token  string
+	}
+
+	JsonRequest(r, &tenantPrivatetoken)
+
+	if tenantPrivatetoken.Tenant != "" && tenantPrivatetoken.Token != "" {
+		if err := setAPPToken(r.Header.Get("Authorization-User"), tenantPrivatetoken.Tenant, tenantPrivatetoken.Token, 0); err != nil {
 			code, msg = 10006, "写入redis失败"
 		}
 	} else {
 		code, msg = 10005, "缺少必要的参数"
 	}
+
 	HTTPApiResult(w, JsonResult{Code: code, Message: msg})
 }
 
@@ -107,6 +121,6 @@ func refreshToken(w http.ResponseWriter, r *http.Request) {
 func init() {
 	http.HandleFunc("/auth/refreshToken", refreshToken)
 	http.HandleFunc("/auth/ldap", authLDAP)
-	http.HandleFunc("/user/private_token", GS.middleware(setPrivateToken))
+	http.HandleFunc("/user/privateToken", GS.middleware(setPrivateToken))
 	http.HandleFunc("/user", GS.middleware(User))
 }

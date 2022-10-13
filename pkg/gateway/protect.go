@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"log"
 	"net/http"
 )
 
@@ -17,6 +18,25 @@ func (g *Gateway) middleware(handle Handle) Handle {
 		}
 		// 监控指标变更
 		httpRequestCounter.Inc()
+
+		// 判断是否为websocket
+		if r.Header.Get("Upgrade") == "websocket" {
+			if QinToken, err := r.Cookie("qin-token"); err != nil {
+				log.Println("获取token失败")
+				return
+			} else {
+				if QinToken.Value == "" {
+					log.Println("token为空")
+					return
+				}
+				if claims, err := vaildateToken(QinToken.Value); err == nil {
+					r.Header.Set("Authorization-User", claims.Username)
+					handle(w, r)
+				}
+				return
+			}
+
+		}
 
 		// 验证用户是否登录
 		if token := r.Header.Get("Authorization"); token != "" {

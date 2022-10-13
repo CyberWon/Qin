@@ -5,6 +5,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gomodule/redigo/redis"
 	"log"
+	"net/http"
 	"time"
 )
 
@@ -72,4 +73,17 @@ func delAPPToken(user, app string) error {
 		return err
 	}
 	return nil
+}
+
+func setTokenCookie(w http.ResponseWriter, token string) {
+	cookie := http.Cookie{
+		Name:     "qin-token",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   GS.Config.Auth.Expire,
+	}
+	http.SetCookie(w, &cookie)
+	log.Println(w.Header())
+
 }

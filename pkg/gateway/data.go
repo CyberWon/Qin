@@ -44,12 +44,12 @@ type Config struct {
 	}
 }
 type Tenant struct {
-	Tenant              string
-	URL                 string
-	Authorization       string
-	AuthorizationURL    string `yaml:"authorization_url"`
-	AuthorizationDomain string `yaml:"authorization_domain"`
-	Insecure            bool
+	Tenant           string
+	URL              string
+	Authorization    string
+	AuthorizationURL string `yaml:"authorization_url"`
+	AuthorizationExt string `yaml:"authorization_ext"`
+	Insecure         bool
 }
 
 // JsonResult 定义一下接口返回的结构体

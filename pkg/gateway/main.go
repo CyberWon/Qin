@@ -132,6 +132,9 @@ func NewTenantHandle(proxy Tenant) (*httputil.ReverseProxy, error) {
 
 		// request的一些构造。
 		director := func(req *http.Request) {
+			log.Println(req.URL)
+			// 移除无用header
+			beforeRemoveHeader(req)
 			req.Host = target.Host
 			req.URL.Scheme = target.Scheme
 			req.URL.Host = target.Host
@@ -141,11 +144,10 @@ func NewTenantHandle(proxy Tenant) (*httputil.ReverseProxy, error) {
 			} else {
 				req.URL.RawQuery = targetQuery + "&" + req.URL.RawQuery
 			}
-			log.Println(req.URL)
 			// 添加访问的app信息到header头部
 			req.Header.Set("Tenant", proxy.Tenant)
 			req.Header.Set("Authorization-URL", proxy.AuthorizationURL)
-			req.Header.Set("Authorization-Domain", proxy.AuthorizationDomain)
+			req.Header.Set("Authorization-Ext", proxy.AuthorizationExt)
 			// 利用反射去调用自定义的Director,来修改对应的headers，认证信息等。
 			customDirector := reflect.ValueOf(&Director)
 			method := customDirector.MethodByName(proxy.Authorization)
@@ -153,13 +155,22 @@ func NewTenantHandle(proxy Tenant) (*httputil.ReverseProxy, error) {
 				reflect.ValueOf(req), // 方法参数
 			}
 			method.Call(params)
-
+			// 移除无用的header
+			afterRemoveHeader(req)
 			// 每次调用执行+1
 			go TenantHTTPRequestCounter.With(prometheus.Labels{"tenant": proxy.Tenant}).Inc()
 		}
-		return &httputil.ReverseProxy{Director: director, Transport: transport, ModifyResponse: func(response *http.Response) error {
-
-			return nil
-		}}, nil
+		return &httputil.ReverseProxy{
+			Director:  director,
+			Transport: transport,
+			ModifyResponse: func(response *http.Response) error {
+				response.Header.Del("Set-Cookie")
+				return nil
+			},
+			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+				log.Println(err)
+				http.Error(w, err.Error(), http.StatusBadGateway)
+			},
+		}, nil
 	}
 }
