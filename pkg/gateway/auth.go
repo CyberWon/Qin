@@ -3,7 +3,6 @@ package gateway
 import (
 	"fmt"
 	"github.com/go-ldap/ldap/v3"
-	"log"
 )
 
 func (g *Gateway) ldapConn() {

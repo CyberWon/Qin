@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gomodule/redigo/redis"
-	"log"
 	"net/http"
 	"time"
 )

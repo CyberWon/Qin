@@ -6,19 +6,22 @@ import (
 	"fmt"
 	"github.com/gomodule/redigo/redis"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path"
 	"reflect"
+	"runtime"
 	"strings"
 )
 
 var (
-	GS Gateway
+	GS  Gateway
+	log = logrus.New()
 )
 
 func init() {
@@ -35,9 +38,17 @@ func init() {
 			}
 		}
 	}
-
-	// 日志格式，为了符合云原生，就不写入到文件了。
-	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile)
+	log.SetLevel(logrus.DebugLevel)
+	log.SetReportCaller(true)
+	log.Formatter = &logrus.TextFormatter{
+		DisableColors:   true,
+		TimestampFormat: "2006-01-02 15:04:05",
+		CallerPrettyfier: func(frame *runtime.Frame) (function string, file string) {
+			//文件名:行号
+			fileName := path.Base(frame.File) + ":" + fmt.Sprint(frame.Line)
+			return frame.Function, fileName
+		},
+	}
 
 	if conn, err := redis.Dial("tcp", GS.Config.Redis.Addr); err != nil {
 		log.Panic("连接redis失败，请检查redis服务或者网络状态")

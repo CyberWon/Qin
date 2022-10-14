@@ -4,7 +4,6 @@ import (
 	"Qin/pkg/req"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	url2 "net/url"
@@ -73,7 +72,6 @@ func (director CustomDirector) Rancher(r *http.Request) {
 	} else {
 		r.Header.Set("Authorization", token)
 		r.AddCookie(&http.Cookie{Name: "R_SESS", Value: strings.Replace(token, "Bearer ", "", -1)})
-		log.Println(r.Cookie("R_SESS"))
 	}
 }
 
@@ -85,14 +83,14 @@ func (director CustomDirector) Token(r *http.Request) {
 	if token, err := getAPPToken(user, app); err != nil {
 		username, password := "", ""
 		if claims, err := vaildateToken(r.Header.Get("Authorization")); err != nil {
-			log.Println("验证token失败")
+			log.Error("验证token失败")
 		} else {
 			username = claims.Username
 			password = claims.Password
 			data, _ := json.Marshal(map[string]string{usernameField: username, passwordField: password})
 			h := req.HTTP{}
 			if httpResult := h.Post(url, data); httpResult == nil {
-				log.Panic("获取token失败")
+				log.Error("获取token失败")
 			} else {
 				if accessToken := httpResult[tokenField].(string); accessToken != "" {
 					setAPPToken(username, app, tokenTypeField+" "+accessToken, 7200)
@@ -132,7 +130,7 @@ func (director CustomDirector) BK(r *http.Request) {
 	c.Url(r.URL.String()).Do()
 	// 直接请求cmdb的接口并不会跳转，只会返回401错误，这里重新对去访问一下登录页面获取一下csrftoken
 	if c.Response.Request != nil && c.Response.Request.Response != nil {
-		log.Println(c.Response.Request.Response.StatusCode, c.Response.Request.Response.Status)
+		log.Debug(c.Response.Request.Response.StatusCode, c.Response.Request.Response.Status)
 		validate = false
 	} else if c.Response.StatusCode == 401 { // 登录失效会进行302跳转，如果没失效，Response.Request.Response的值为nil
 		validate = false
@@ -146,14 +144,14 @@ func (director CustomDirector) BK(r *http.Request) {
 		// 模拟登录
 		password := ""
 		if claims, err := vaildateToken(r.Header.Get("Authorization")); err != nil {
-			log.Println("验证token失败")
+			log.Error("验证token失败")
 		} else {
 			password = claims.Password
 			postData := url2.Values{"csrfmiddlewaretoken": []string{csrftoken},
 				"username": []string{fmt.Sprintf("%s%s", user, domain)},
 				"password": []string{password}, "next": []string{""}, "app_id": []string{""}}
 			c.Url(url).Post(strings.NewReader(postData.Encode()), "urlencoded").Do()
-			log.Println("登录蓝鲸", c.Response.StatusCode, c.Response.Status)
+			log.Debug("登录蓝鲸", c.Response.StatusCode, c.Response.Status)
 			c.Url(r.URL.String()).Do().SetCookie(r)
 		}
 		m.Unlock()

@@ -7,5 +7,6 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.4
 	github.com/gomodule/redigo v1.8.9
 	github.com/prometheus/client_golang v1.13.0
+	github.com/sirupsen/logrus v1.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )

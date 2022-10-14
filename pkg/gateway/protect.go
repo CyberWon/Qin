@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"log"
 	"net/http"
 )
 
