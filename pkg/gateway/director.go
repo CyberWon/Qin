@@ -49,7 +49,7 @@ func (director CustomDirector) None(r *http.Request) {
 }
 
 func (director CustomDirector) Basic(r *http.Request) {
-	if claims, err := vaildateToken(r.Header.Get("Authorization")); err != nil {
+	if claims, err := validateToken(r.Header.Get("Authorization")); err != nil {
 		log.Println("验证token失败")
 	} else {
 		r.SetBasicAuth(claims.Username, claims.Password)
@@ -82,7 +82,7 @@ func (director CustomDirector) Token(r *http.Request) {
 	usernameField, passwordField, tokenTypeField, tokenField := ext[0], ext[1], ext[2], ext[3]
 	if token, err := getAPPToken(user, app); err != nil {
 		username, password := "", ""
-		if claims, err := vaildateToken(r.Header.Get("Authorization")); err != nil {
+		if claims, err := validateToken(r.Header.Get("Authorization")); err != nil {
 			log.Error("验证token失败")
 		} else {
 			username = claims.Username
@@ -143,7 +143,7 @@ func (director CustomDirector) BK(r *http.Request) {
 		csrftoken := c.GetCookies("bklogin_csrftoken").Value
 		// 模拟登录
 		password := ""
-		if claims, err := vaildateToken(r.Header.Get("Authorization")); err != nil {
+		if claims, err := validateToken(r.Header.Get("Authorization")); err != nil {
 			log.Error("验证token失败")
 		} else {
 			password = claims.Password

@@ -25,7 +25,7 @@ func createToken(claims *Claims) (signedToken string, err error) {
 	}
 }
 
-func vaildateToken(signedToken string) (c *Claims, err error) {
+func validateToken(signedToken string) (c *Claims, err error) {
 
 	if token, err := jwt.ParseWithClaims(signedToken, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -61,8 +61,13 @@ func setAPPToken(user, app, token string, ttl int) error {
 }
 
 func getAPPToken(user, app string) (token string, err error) {
-	token, err = redis.String(GS.Cache.Do("GET", fmt.Sprintf("gs:%s:%s", user, app)))
-	return token, err
+	if replay, err := GS.Cache.Do("GET", fmt.Sprintf("gs:%s:%s", user, app)); err != nil {
+		log.Error(err)
+		return "", err
+	} else {
+		token, err = redis.String(replay, err)
+		return token, err
+	}
 }
 
 func delAPPToken(user, app string) error {

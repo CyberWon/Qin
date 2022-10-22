@@ -107,7 +107,7 @@ func refreshToken(w http.ResponseWriter, r *http.Request) {
 		Message: "成功",
 		Token:   "",
 	}
-	if claims, err := vaildateToken(r.Header.Get("Authorization")); err == nil {
+	if claims, err := validateToken(r.Header.Get("Authorization")); err == nil {
 		if signedToken, err := createToken(&Claims{Username: claims.Username, Password: claims.Password}); err != nil {
 			result.Code, result.Message = 10003, err.Error()
 		} else {

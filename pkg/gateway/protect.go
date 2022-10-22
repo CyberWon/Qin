@@ -28,7 +28,7 @@ func (g *Gateway) middleware(handle Handle) Handle {
 					log.Println("token为空")
 					return
 				}
-				if claims, err := vaildateToken(QinToken.Value); err == nil {
+				if claims, err := validateToken(QinToken.Value); err == nil {
 					r.Header.Set("Authorization-User", claims.Username)
 					handle(w, r)
 				}
@@ -39,7 +39,7 @@ func (g *Gateway) middleware(handle Handle) Handle {
 
 		// 验证用户是否登录
 		if token := r.Header.Get("Authorization"); token != "" {
-			if claims, err := vaildateToken(token); err != nil {
+			if claims, err := validateToken(token); err != nil {
 				HTTPApiResult(w, JsonResult{Code: 10004, Message: "token验证失败"})
 				UserRequestCounter.With(prometheus.Labels{"user": "guest"}).Inc()
 				return
